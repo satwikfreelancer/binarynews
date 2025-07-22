@@ -80,19 +80,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/articles", async (req, res) => {
-    try {
-      const articleData = insertArticleSchema.parse(req.body);
-      const article = await storage.createArticle(articleData);
-      res.status(201).json(article);
-    } catch (error) {
-      console.error("Error creating article:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ message: "Invalid article data", errors: error.errors });
-      } else {
-        res.status(500).json({ message: "Failed to create article", error: error.message });
-      }
+  try {
+    const articleData = insertArticleSchema.parse(req.body);
+    const article = await storage.createArticle(articleData);
+    res.status(201).json(article);
+  } catch (error) {
+    console.error("Error creating article:", error);
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ message: "Invalid article data", errors: error.errors });
+    } else {
+      // Type guard for Error object
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ message: "Failed to create article", error: message });
     }
-  });
+  }
+});
 
   app.put("/api/articles/:id", async (req, res) => {
     try {

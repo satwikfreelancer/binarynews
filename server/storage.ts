@@ -1,6 +1,6 @@
 import { categories, articles, breakingNews, type Category, type Article, type BreakingNews, type InsertCategory, type InsertArticle, type InsertBreakingNews } from "@shared/schema";
 import { db } from "./db";
-import { eq, ilike, or, and, desc } from "drizzle-orm";
+import { eq, ilike, or, and, desc, SQL } from "drizzle-orm";
 
 export interface IStorage {
   // Categories
@@ -42,39 +42,73 @@ export class DatabaseStorage implements IStorage {
     return newCategory;
   }
 
-async getArticles(options?: { categoryId?: number; featured?: boolean; published?: boolean; limit?: number; offset?: number }): Promise<Article[]> {
-  const conditions = [];
+// async getArticles(options?: { categoryId?: number; featured?: boolean; published?: boolean; limit?: number; offset?: number }): Promise<Article[]> {
+//   const conditions = [];
   
-  if (options?.categoryId) {
-    conditions.push(eq(articles.categoryId, options.categoryId));
-  }
+//   if (options?.categoryId) {
+//     conditions.push(eq(articles.categoryId, options.categoryId));
+//   }
   
-  if (options?.featured !== undefined) {
-    conditions.push(eq(articles.featured, options.featured));
-  }
+//   if (options?.featured !== undefined) {
+//     conditions.push(eq(articles.featured, options.featured));
+//   }
   
-  if (options?.published !== undefined) {
-    conditions.push(eq(articles.published, options.published));
-  }
+//   if (options?.published !== undefined) {
+//     conditions.push(eq(articles.published, options.published));
+//   }
   
-  let query = db.select().from(articles); // This should select all columns by default
+//   let query = db.select().from(articles); // This should select all columns by default
 
-  if (conditions.length > 0) {
-    query = query.where(and(...conditions));
+//   if (conditions.length > 0) {
+//     query = query.where(and(...conditions));
+//   }
+  
+//   query = query.orderBy(desc(articles.publishedAt));
+  
+//   if (options?.limit) {
+//     query = query.limit(options.limit);
+//   }
+  
+//   if (options?.offset) {
+//     query = query.offset(options.offset);
+//   }
+  
+//   return await query;
+// }
+
+async getArticles(options?: { categoryId?: number; featured?: boolean; published?: boolean; limit?: number; offset?: number }): Promise<Article[]> {
+    const conditions: SQL[] = [];
+    
+    if (options?.categoryId) {
+      conditions.push(eq(articles.categoryId, options.categoryId));
+    }
+    
+    if (options?.featured !== undefined) {
+      conditions.push(eq(articles.featured, options.featured));
+    }
+    
+    if (options?.published !== undefined) {
+      conditions.push(eq(articles.published, options.published));
+    }
+    
+    const baseQuery = db.select().from(articles);
+
+    const queryWithConditions = conditions.length > 0
+      ? baseQuery.where(and(...conditions))
+      : baseQuery;
+    
+    const queryWithOrder = queryWithConditions.orderBy(desc(articles.publishedAt));
+    
+    const queryWithLimit = options?.limit
+      ? queryWithOrder.limit(options.limit)
+      : queryWithOrder;
+    
+    const finalQuery = options?.offset
+      ? queryWithLimit.offset(options.offset)
+      : queryWithLimit;
+    
+    return await finalQuery;
   }
-  
-  query = query.orderBy(desc(articles.publishedAt));
-  
-  if (options?.limit) {
-    query = query.limit(options.limit);
-  }
-  
-  if (options?.offset) {
-    query = query.offset(options.offset);
-  }
-  
-  return await query;
-}
 
   async getArticleBySlug(slug: string): Promise<Article | undefined> {
     const [article] = await db.select().from(articles).where(eq(articles.slug, slug));
